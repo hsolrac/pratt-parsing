@@ -1,13 +1,35 @@
-#[derive(Debug)]
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Token {
     Atom(char), 
     Op(char),
     Eof,
 }
 
+enum S {
+    Atom(char), 
+    Cons(char, Vec<S>)
+}
+
 #[derive(Debug)]
 struct Lexer {
     tokens: Vec<Token>,
+}
+
+impl fmt::Display for S {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            S::Atom(i) => write!(f, "{}", i), 
+            S::Cons(head, rest) => {
+                write!(f, "({}",  head)?;
+                for s in rest {
+                    write!(f, " {}", s)?
+                }
+                write!(f, " )")
+            }
+        }
+    }
 }
 
 impl Lexer {
@@ -25,11 +47,69 @@ impl Lexer {
         
         Lexer { tokens }
     }
+
+    fn next(&mut self) -> Token {
+        self.tokens.pop().unwrap_or(Token::Eof)
+    }
+
+    fn peek(&mut self) -> Token {
+        self.tokens.last().copied().unwrap_or(Token::Eof)
+    }
+}
+
+fn expr(input: &str) -> S {
+    let mut lexer = Lexer::new(input);
+    expr_bp(&mut lexer)
+}
+
+fn expr_bp(lexer: &mut Lexer) -> S {
+    let lhs = match lexer.next() {
+        Token::Atom(it) => S::Atom(it), 
+        t => panic!("invalid token: {:?}", t),
+    };
+
+    loop {
+        let op = match lexer.next() {
+            Token::Eof => break, 
+            Token::Op(op) => op, 
+            t => panic!("invalid token: {:?}", t),
+        };
+        let (l_bp, r_bp) = infix_binding_power(op);
+
+        todo!()
+    }
+
+    lhs
+}
+
+fn infix_binding_power(op: char) -> (u8, u8) {
+    match op {
+        '+' | '-' => (1, 2), 
+        '*' | '/' => (3, 4), 
+        _ => panic!("bad op: {:?}", op)
+    }
 }
 
 
 fn main() {
-    let tokens = "1 + 2";
+    let tokens = "1 + 2 * 3";
 
     println!("{:?}", Lexer::new(tokens))
+}
+
+
+//
+//
+//                            Add
+//                 Parser     / \
+// "1 + 2 * 3"    ------->   1  Mul
+//                              / \
+//                             2   3
+//
+
+
+#[test]
+fn tests() {
+    let s = expr("1");
+    assert_eq!(s.to_string(), "1")
 }
